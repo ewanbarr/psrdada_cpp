@@ -7,7 +7,7 @@
 #include <complex>
 
 namespace psrdada_cpp {
-namespace effeslberg {
+namespace effelsberg {
 namespace rfi_chamber {
 namespace test {
 
@@ -44,8 +44,8 @@ TEST_F(RSSpectrometerTester, test_exec)
 
     std::vector<char> vheader(4096);
     std::vector<char> vdata(block_bytes);
-    RawBytes header_block(vheader.ptr(), vheader.size(), vheader.size());
-    RawBytes data_block(vdata.ptr(), vdata.size(), vdata.size());
+    RawBytes header_block(vheader.data(), vheader.size(), vheader.size());
+    RawBytes data_block(vdata.data(), vdata.size(), vdata.size());
     RSSpectrometer spectrometer(input_nchans, fft_length, naccumulate, nskip);
     spectrometer.init(header_block);
 

@@ -78,13 +78,13 @@ RSSpectrometer::RSSpectrometer(std::size_t input_nchans, std::size_t fft_length,
 
     // Configure CUFFT for FFT execution
     BOOST_LOG_TRIVIAL(debug) << "Generating CUFFT plan";
-    CUFFT_ERROR_CHECK(cufftPlanMany(
-        *_fft_plan, 1, {_fft_length},
-        {_input_nchans}, _input_nchans
-        1, {_fft_length}, 1, _fft_length,
+    int n[] = {static_cast<int>(_fft_length)};
+    int inembed[] = {static_cast<int>(_input_nchans)};
+    int onembed[] = {static_cast<int>(_fft_length)}; 
+    CUFFT_ERROR_CHECK(cufftPlanMany(&_fft_plan, 1, n, inembed, _input_nchans, 1, onembed, 1, _fft_length,
         CUFFT_C2C, _input_nchans));
     BOOST_LOG_TRIVIAL(debug) << "Setting CUFFT stream";
-    CUFFT_ERROR_CHECK(cufftSetStream(_proc_stream));
+    CUFFT_ERROR_CHECK(cufftSetStream(_fft_plan, _proc_stream));
     BOOST_LOG_TRIVIAL(info) << "RSSpectrometer instance initialised";
 }
 
@@ -95,7 +95,7 @@ RSSpectrometer::~RSSpectrometer()
     CUDA_ERROR_CHECK(cudaStreamDestroy(_copy_stream));
     CUDA_ERROR_CHECK(cudaStreamDestroy(_proc_stream));
     BOOST_LOG_TRIVIAL(debug) << "Destroying CUFFT plan";
-    CUFFT_ERROR_CHECK(cufftDestroy(plan));
+    CUFFT_ERROR_CHECK(cufftDestroy(_fft_plan));
     BOOST_LOG_TRIVIAL(info) << "RSSpectrometer instance destroyed";
 }
 
@@ -104,19 +104,19 @@ void RSSpectrometer::init(RawBytes &header)
     BOOST_LOG_TRIVIAL(debug) << "RSSpectrometer received header block";
 }
 
-void RSSpectrometer::operator()(RawBytes &block)
+bool RSSpectrometer::operator()(RawBytes &block)
 {
     BOOST_LOG_TRIVIAL(debug) << "RSSpectrometer received data block";
     if (_nskip > 0)
     {
         BOOST_LOG_TRIVIAL(debug) << "Skipping block while stream stabilizes";
         --_nskip;
-        return false
+        return false;
     }
-    assert(block.used_bytes() % _bytes_per_input_spectrum == 0) /** Block is not a multiple of the heap group size */
+    assert(block.used_bytes() % _bytes_per_input_spectrum == 0); /** Block is not a multiple of the heap group size */
     std::size_t nspectra_in = block.used_bytes() / _bytes_per_input_spectrum;
     BOOST_LOG_TRIVIAL(debug) << "Number of input spectra per block: " << nspectra_in;
-    assert(block.used_bytes() % _output_nchans * sizeof(InputType) == 0) /** Block is not a multiple of the spectrum size */
+    assert(block.used_bytes() % _output_nchans * sizeof(InputType) == 0); /** Block is not a multiple of the spectrum size */
     std::size_t nspectra_out = block.used_bytes() / (_output_nchans * sizeof(InputType));
     BOOST_LOG_TRIVIAL(debug) << "Number of output spectra per block: " << nspectra_out;
 
@@ -127,19 +127,19 @@ void RSSpectrometer::operator()(RawBytes &block)
     }
     else
     {
-        n_to_accumulate = nspectra;
+        n_to_accumulate = nspectra_out;
     }
     BOOST_LOG_TRIVIAL(debug) << "Number of spectra to accumulate in current block: " << n_to_accumulate;
     BOOST_LOG_TRIVIAL(debug) << "Entering processing loop";
     std::size_t nchan_blocks = _input_nchans / _chans_per_copy;
-    for (std::size_t spec_idx = 0; spec_idx < nspectra; ++spec_idx)
+    for (std::size_t spec_idx = 0; spec_idx < nspectra_out; ++spec_idx)
     {
-        copy(spec_idx, 0, nspectra_in);
+        copy(block, spec_idx, 0, nspectra_in);
         for (std::size_t chan_block_idx = 1;
             chan_block_idx < nchan_blocks - 1;
             ++chan_block_idx)
         {
-            copy(spec_idx, chan_block_idx, nspectra_in);
+            copy(block, spec_idx, chan_block_idx, nspectra_in);
             process(chan_block_idx);
         }
         CUDA_ERROR_CHECK(cudaStreamSynchronize(_copy_stream));
@@ -179,7 +179,7 @@ void RSSpectrometer::process(std::size_t chan_block_idx)
         kernels::short2_to_float2());
     // Perform forward C2C transform
     BOOST_LOG_TRIVIAL(debug) << "Executing FFT";
-    cufftFloatComplex* ptr = reinterpret_cast<cufftFloatComplex>(
+    cufftComplex* ptr = static_cast<cufftComplex*>(
         thrust::raw_pointer_cast(_fft_buffer.data()));
     CUFFT_ERROR_CHECK(cufftExecC2C(
         _fft_plan, ptr, ptr, CUFFT_FORWARD));
@@ -195,7 +195,7 @@ void RSSpectrometer::process(std::size_t chan_block_idx)
         kernels::detect_accumulate());
 }
 
-void RSSpectrometer::copy(std::size_t spec_idx, std::size_t chan_block_idx, std::size_t nspectra_in)
+void RSSpectrometer::copy(RawBytes& block, std::size_t spec_idx, std::size_t chan_block_idx, std::size_t nspectra_in)
 {
     BOOST_LOG_TRIVIAL(debug) << "Copying block to GPU";
     std::size_t spitch = _input_nchans * sizeof(short2); // Width of a row in bytes (so number of channels total)
@@ -204,15 +204,14 @@ void RSSpectrometer::copy(std::size_t spec_idx, std::size_t chan_block_idx, std:
     std::size_t height = _fft_length; // Total number of samples to copy
     CUDA_ERROR_CHECK(cudaStreamSynchronize(_copy_stream));
     _copy_buffer.swap();
-    char* src = block.ptr() + spec_id * spitch * height + chan_block_idx * width;
+    char* src = block.ptr() + spec_idx * spitch * height + chan_block_idx * width;
     CUDA_ERROR_CHECK(cudaMemcpy2DAsync(_copy_buffer.a_ptr(),
         dpitch, src, spitch, width, height,
         cudaMemcpyHostToDevice, _copy_stream));
 }
 
 
-} //namespace fbfuse
+} //namespace rfi_chamber
 } //namespace effelsberg
-} //namespace psrfi_chambercpp
+} //namespace psrdada_cpp
 
-#endif //PSRDADA_CPP_EFFELSBERG_RFI_CHAMBER_RSSPECTROMETER_CUH

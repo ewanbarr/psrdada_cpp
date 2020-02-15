@@ -1,6 +1,8 @@
 #ifndef PSRDADA_CPP_EFFELSBERG_RFI_CHAMBER_RSSPECTROMETER_CUH
 #define PSRDADA_CPP_EFFELSBERG_RFI_CHAMBER_RSSPECTROMETER_CUH
 
+#include "psrdada_cpp/raw_bytes.hpp"
+#include "psrdada_cpp/double_device_buffer.cuh"
 #include "psrdada_cpp/common.hpp"
 #include "thrust/device_vector.h"
 #include "thrust/host_vector.h"
@@ -29,10 +31,10 @@ public:
 
 private:
     void process(std::size_t chan_block_idx);
-    void copy(std::size_t spec_idx, std::size_t chan_block_idx, std::size_t nspectra_in);
+    void copy(RawBytes& block, std::size_t spec_idx, std::size_t chan_block_idx, std::size_t nspectra_in);
 
 private:
-    thrust::device_vector<InputType> _copy_buffer;
+    DoubleDeviceBuffer<InputType> _copy_buffer;
     thrust::device_vector<FftType> _fft_buffer;
     thrust::device_vector<OutputType> _accumulation_buffer;
     thrust::device_vector<OutputType> _h_accumulation_buffer;
@@ -44,8 +46,8 @@ private:
     std::size_t _bytes_per_input_spectrum;
     std::size_t _chans_per_copy;
     cufftHandle _fft_plan;
-    cudaStream_t copy_stream;
-    cudaStream_t proc_stream;
+    cudaStream_t _copy_stream;
+    cudaStream_t _proc_stream;
 };
 
 
