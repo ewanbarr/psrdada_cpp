@@ -14,7 +14,7 @@ GainManager::GainManager(PipelineConfig const& config, cudaStream_t stream)
     : _config(config)
     , _copy_stream(stream)
     , _last_sem_value(0)
-    , _buffer_size(sizeof(ComplexGainType) * FBFUSE_NPOL * FBFUSE_TOTAL_NANTENNAS)
+    , _buffer_size(sizeof(ComplexGainType) * config.total_nantennas() * config.nchans() * config.npol())
 {
     BOOST_LOG_TRIVIAL(debug) << "Constructing new GainManager instance";
     BOOST_LOG_TRIVIAL(debug) << "Opening gain buffer shared memory segement";
@@ -84,7 +84,7 @@ GainManager::GainManager(PipelineConfig const& config, cudaStream_t stream)
     // CUDA_ERROR_CHECK(cudaHostRegister(static_cast<void*>(_gains_h->gains),
     //    sizeof(_gains_h->gains), cudaHostRegisterMapped));
     // Resize the GPU array for the gains
-    _gains.resize(FBFUSE_NPOL * FBFUSE_TOTAL_NANTENNAS, float2{1.0f, 0.0f});
+    _gains.resize(_config.total_nantennas() * _config.nchans() * _config.npol(), float2{1.0f, 0.0f});
 }
 
 GainManager::~GainManager()
@@ -93,25 +93,25 @@ GainManager::~GainManager()
     //CUDA_ERROR_CHECK(cudaHostUnregister(static_cast<void*>(_gains_h->gains)));
     if (munmap(_gains_h, _buffer_size) == -1)
     {
-        throw std::runtime_error(std::string(
+        BOOST_LOG_TRIVIAL(error) << (std::string(
             "Failed to unmap shared memory with error: ")
             + std::strerror(errno));
     }
     if (close(_gain_buffer_fd) == -1)
     {
-        throw std::runtime_error(std::string(
+        BOOST_LOG_TRIVIAL(error) << (std::string(
             "Failed to close shared memory file descriptor with error: ")
             + std::strerror(errno));
     }
     if (sem_close(_gain_count_sem) == -1)
     {
-        throw std::runtime_error(std::string(
+        BOOST_LOG_TRIVIAL(error) << (std::string(
             "Failed to close counting semaphore with error: ")
             + std::strerror(errno));
     }
     if (sem_close(_gain_mutex_sem) == -1)
     {
-        throw std::runtime_error(std::string(
+        BOOST_LOG_TRIVIAL(error) << (std::string(
             "Failed to close mutex semaphore with error: ")
             + std::strerror(errno));
     }
@@ -150,7 +150,7 @@ bool GainManager::update_available()
     }
 }
 
-GainManager::GainVectorType const& GainManager::gains()
+GainManager::ComplexGainVectorType const& GainManager::gains()
 {
     // This function should return the gains in GPU memory
     // First check if we need to update GPU memory

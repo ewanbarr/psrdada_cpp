@@ -1,5 +1,7 @@
 #include "psrdada_cpp/meerkat/fbfuse/VoltageScaling.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/fbfuse_constants.hpp"
+#include "psrdada_cpp/cuda_utils.hpp"
+#include "psrdada_cpp/common.hpp"
 
 namespace psrdada_cpp {
 namespace meerkat {
@@ -80,7 +82,7 @@ void voltage_scaling(
     std::size_t heap_group_size = FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_NPOL;
     std::size_t n_heap_groups = taftp_voltages_in.size() / heap_group_size;
     BOOST_LOG_TRIVIAL(debug) << "Voltage buffer contains " << n_heap_groups << " heaps";
-    if (taftp_voltages_in.size() % heap_group_size == 0)
+    if (taftp_voltages_in.size() % heap_group_size != 0)
     {
         std::stringstream ss;
         ss << "Voltage array is not a multiple of the heap group size ("
@@ -89,18 +91,18 @@ void voltage_scaling(
         throw std::runtime_error(ss.str());
     }
     taftp_voltages_out.resize(taftp_voltages_in.size());
-    char4* taftp_voltages_out_ptr = reinterpret_cast<char4>(thrust::raw_pointer_cast(taftp_voltages_out.data()));
-    char4 const* taftp_voltages_in_ptr = reinterpret_cast<char4>(thrust::raw_pointer_cast(taftp_voltages_in.data()));
-    float4 const* afp_gains_ptr = reinterpret_cast<float4>(thrust::raw_pointer_cast(afp_gains.data()));
-    float const* f_channel_scalings_ptr = reinterpret_cast<float>(thrust::raw_pointer_cast(f_channel_scalings.data()));
+    char4* taftp_voltages_out_ptr = reinterpret_cast<char4*>(thrust::raw_pointer_cast(taftp_voltages_out.data()));
+    char4 const* taftp_voltages_in_ptr = reinterpret_cast<char4 const*>(thrust::raw_pointer_cast(taftp_voltages_in.data()));
+    float4 const* afp_gains_ptr = reinterpret_cast<float4 const*>(thrust::raw_pointer_cast(afp_gains.data()));
+    float const* f_channel_scalings_ptr = reinterpret_cast<float const*>(thrust::raw_pointer_cast(f_channel_scalings.data()));
     dim3 blocks(n_heap_groups, FBFUSE_TOTAL_NANTENNAS, FBFUSE_NCHANS);
-    kernels::apply_gains<<<blocks, FBFUSE_NSAMPLES_PER_HEAP, 0, stream>>>(
+    kernels::scale_voltages<<<blocks, FBFUSE_NSAMPLES_PER_HEAP, 0, stream>>>(
         taftp_voltages_out_ptr,
         taftp_voltages_in_ptr,
         afp_gains_ptr,
         f_channel_scalings_ptr,
         n_heap_groups);
-    CUDA_ERROR_CHECK(cudaStreamSynchronize());
+    CUDA_ERROR_CHECK(cudaStreamSynchronize(stream));
     BOOST_LOG_TRIVIAL(debug) << "Voltage scalings applied";
 }
 

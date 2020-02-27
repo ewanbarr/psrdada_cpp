@@ -5,6 +5,7 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <errno.h>
 #include <cstring>
+#include <numeric>
 
 #define LOG2_FBFUSE_NSAMPLES_PER_HEAP 8
 
@@ -29,7 +30,7 @@ __global__ void calculate_std(
     {
         for (std::size_t jj = 0; jj < FBFUSE_TOTAL_NANTENNAS; ++jj)
         {
-            std::size_t idx = threadIdx.x + (FBFUSE_NSAMPLES_PER_HEAP)*freq_idx + ii * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS +     jj*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NCHANS;
+            std::size_t idx = ii * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS +  jj*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NCHANS + (FBFUSE_NSAMPLES_PER_HEAP)*freq_idx + threadIdx.x;
             char4 temp = taftp_voltages[idx];
             sum += (temp.x + temp.y + temp.w + temp.z);
             sum_sq += (temp.x*temp.x + temp.y*temp.y + temp.w*temp.w + temp.z*temp.z);
@@ -88,9 +89,8 @@ ChannelScalingManager::~ChannelScalingManager()
 
     if (sem_close(_channel_scaling_count_sem) == -1)
     {
-        throw std::runtime_error(std::string(
-            "Failed to close counting semaphore with error: ")
-            + std::strerror(errno));
+        BOOST_LOG_TRIVIAL(error) << "Failed to close counting semaphore with error: "
+            << std::strerror(errno);
     }
 }
 
@@ -149,6 +149,7 @@ void ChannelScalingManager::channel_statistics(thrust::device_vector<char2> cons
                 taftp_voltages_ptr,
                 input,
                 nsamples);
+
         CUDA_ERROR_CHECK(cudaStreamSynchronize(_stream));
         BOOST_LOG_TRIVIAL(debug) << "Finished running input levels kernel";
         // Copy input levels to host and calculate statistics
@@ -233,32 +234,32 @@ void ChannelScalingManager::channel_statistics(thrust::device_vector<char2> cons
         _cb_offsets = h_cb_offsets;
         _cb_scaling = h_cb_scaling;
         _ib_offsets = h_ib_offsets;
-        _ib_scaling = h_ib_scaling
+        _ib_scaling = h_ib_scaling;
 
     }
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::channel_input_levels() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::channel_input_levels() const
 {
     return _channel_input_levels;
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::cb_offsets() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::cb_offsets() const
 {
     return _cb_offsets;
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::cb_scaling() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::cb_scaling() const
 {
     return _cb_scaling;
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::ib_offsets() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::ib_offsets() const
 {
     return _ib_offsets;
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::ib_scaling() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::ib_scaling() const
 {
     return _ib_scaling;
 }

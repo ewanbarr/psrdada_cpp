@@ -71,6 +71,58 @@ public:
     void delay_buffer_sem(std::string const&);
 
     /**
+     * @brief      Get the key to POSIX shared memory
+     *             buffer for delays.
+     */
+    std::string const& gain_buffer_shm() const;
+
+    /**
+     * @brief      Set the key to POSIX shared memory
+     *             buffer for gains.
+     */
+    void gain_buffer_shm(std::string const&);
+
+    /**
+     * @brief      Get the key to POSIX mutex
+     *             for the gain buffer.
+     *
+     * @detail     This mutex is used to prevent clients
+     *             from reading the gain buffer during
+     *             and update.
+     */
+    std::string const& gain_buffer_mutex() const;
+
+    /**
+     * @brief      Set the key to POSIX mutex
+     *             for the gain buffer.
+     *
+     * @detail     This mutex is used to prevent clients
+     *             from reading the gain buffer during
+     *             and update.
+     */
+    void gain_buffer_mutex(std::string const&);
+
+    /**
+     * @brief      Get the key to POSIX semaphore
+     *             for the gain buffer.
+     *
+     * @detail     This is a counting semaphore that
+     *             is updated whenever a new gain
+     *             model becomes available.
+     */
+    std::string const& gain_buffer_sem() const;
+
+    /**
+     * @brief      Set the key to POSIX semaphore
+     *             for the gain buffer.
+     *
+     * @detail     This is a counting semaphore that
+     *             is updated whenever a new gain
+     *             model becomes available.
+     */
+    void gain_buffer_sem(std::string const&);
+
+    /**
      * @brief      Get the key to POSIX semaphore
      *             for the channel input levels.
      *
@@ -342,6 +394,9 @@ private:
     std::string _delay_buffer_shm;
     std::string _delay_buffer_mutex;
     std::string _delay_buffer_sem;
+    std::string _gain_buffer_shm;
+    std::string _gain_buffer_mutex;
+    std::string _gain_buffer_sem;
     std::string _channel_scaling_sem;
     key_t _input_dada_key;
     key_t _cb_dada_key;
