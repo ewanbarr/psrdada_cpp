@@ -101,6 +101,7 @@ Pipeline::Pipeline(PipelineConfig const& config,
 
     BOOST_LOG_TRIVIAL(debug) << "Constructing delay and weights managers";
     _delay_manager.reset(new DelayManager(_config, _h2d_copy_stream));
+    _gain_manager.reset(new GainManager(_config, _h2d_copy_stream));
     _weights_manager.reset(new WeightsManager(_config, _processing_stream));
     _stats_manager.reset(new ChannelScalingManager(_config, _processing_stream));
     _split_transpose.reset(new SplitTranspose(_config));
@@ -162,7 +163,6 @@ void Pipeline::process(VoltageVectorType& taftp_vec,
     PowerVectorType& tbtf_vec, PowerVectorType& tf_vec)
 {
     BOOST_LOG_TRIVIAL(debug) << "Executing coherent beamforming pipeline";
-
     BOOST_LOG_TRIVIAL(debug) << "Checking for complex gain updates";
     auto const& gains = _gain_manager->gains();
     BOOST_LOG_TRIVIAL(debug) << "Checking for delay updates";
@@ -172,8 +172,7 @@ void Pipeline::process(VoltageVectorType& taftp_vec,
     BOOST_LOG_TRIVIAL(debug) << "Checking if channel statistics update request";
     _stats_manager->channel_statistics(taftp_vec);
     BOOST_LOG_TRIVIAL(debug) << "Applying complex gain corrections";
-    voltage_scaling(taftp_vec, taftp_vec, gains, _channel_scalings);
-    auto const& weights = _weights_manager->weights(delays, _unix_timestamp, _delay_manager->epoch());
+    voltage_scaling(taftp_vec, taftp_vec, gains, _channel_scalings, _processing_stream);
     BOOST_LOG_TRIVIAL(debug) << "Transposing input data from TAFTP to FTPA order";
     _split_transpose->transpose(taftp_vec, _split_transpose_output, _processing_stream);
     BOOST_LOG_TRIVIAL(debug) << "Forming coherent beams";
@@ -186,9 +185,9 @@ void Pipeline::process(VoltageVectorType& taftp_vec,
     BOOST_LOG_TRIVIAL(debug) << "Forming incoherent beam";
     auto const& ib_scaling = _stats_manager->ib_scaling();
     auto const& ib_offsets = _stats_manager->ib_offsets();
-    _incoherent_beamformer->beamform(t
-        aftp_vec, ib_scaling, ib_offsets,
-        tf_vec, _processing_stream);
+    _incoherent_beamformer->beamform(
+            taftp_vec, tf_vec, ib_scaling, ib_offsets,
+             _processing_stream);
 }
 
 bool Pipeline::operator()(RawBytes& data)

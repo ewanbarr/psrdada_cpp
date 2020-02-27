@@ -2,7 +2,11 @@
 #ifndef PSRDADA_CPP_MEERKAT_FBFUSE_CONSTANTS_HPP
 #define PSRDADA_CPP_MEERKAT_FBFUSE_CONSTANTS_HPP
 
+<<<<<<< HEAD
 #define FBFUSE_TOTAL_NANTENNAS 60   // The total number of antennas in the input DADA buffer
+=======
+#define FBFUSE_TOTAL_NANTENNAS 64   // The total number of antennas in the input DADA buffer
+>>>>>>> a9991a774eefeb89732f9af15a24fe0d47bc83ee
 #define FBFUSE_NCHANS 64              // The number of channels to be processes by this instance
 #define FBFUSE_NCHANS_TOTAL 4096         // This is the F-engine channel count
 #define FBFUSE_NSAMPLES_PER_HEAP 256
@@ -10,9 +14,13 @@
 
 #define FBFUSE_CB_TSCRUNCH 16
 #define FBFUSE_CB_FSCRUNCH 1
+<<<<<<< HEAD
 #define FBFUSE_CB_NANTENNAS 60
+=======
+#define FBFUSE_CB_NANTENNAS 64
+>>>>>>> a9991a774eefeb89732f9af15a24fe0d47bc83ee
 #define FBFUSE_CB_ANTENNA_OFFSET 0
-#define FBFUSE_CB_NBEAMS 32
+#define FBFUSE_CB_NBEAMS 1024
 #define FBFUSE_CB_NTHREADS 1024
 #define FBFUSE_CB_WARP_SIZE 32
 #define FBFUSE_CB_NWARPS_PER_BLOCK (FBFUSE_CB_NTHREADS/FBFUSE_CB_WARP_SIZE)
