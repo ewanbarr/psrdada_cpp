@@ -13,27 +13,10 @@
 #include <cmath>
 #include <complex>
 
-
-
-
 namespace psrdada_cpp {
 namespace meerkat {
 namespace fbfuse {
 namespace test {
-
-
-class ChannelScalingTrigger
-{
-    public:
-        ChannelScalingTrigger(PipelineConfig const& config);
-        ~ChannelScalingTrigger();
-
-        void request_statistics();
-
-    private:
-        sem_t* _count_sem;
-        std::string _channel_scaling_sem;
-};
 
 ChannelScalingTrigger::ChannelScalingTrigger(PipelineConfig const& config)
 : _channel_scaling_sem(config.channel_scaling_sem())
@@ -57,7 +40,7 @@ ChannelScalingTrigger::~ChannelScalingTrigger()
         msg << "Failed to close semaphore "
         << _count_sem << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 }
 
@@ -143,10 +126,27 @@ TEST_F(ChannelScalingManagerTester, test_gaussian_noise)
     //simulate noise
     thrust::host_vector<char2> taftp_voltages_host(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NCHANS*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL);
     thrust::host_vector<float> input_level(FBFUSE_NCHANS);
-    for (int ii = 0; ii < taftp_voltages_host.size(); ++ii)
+
+    for (std::size_t outerT = 0 ; outerT < nsamples; ++outerT )
     {
-        taftp_voltages_host[ii].x = static_cast<int8_t>(std::lround(normal_dist(generator)));
-        taftp_voltages_host[ii].y = static_cast<int8_t>(std::lround(normal_dist(generator)));
+        for (std::size_t A=0; A <  FBFUSE_TOTAL_NANTENNAS; ++A)
+        {
+            for(std::size_t F = 0 ; F < FBFUSE_NCHANS; ++F)
+            {
+                float factor = F * (0.8/FBFUSE_NCHANS) +  0.6;
+                float val = std::lround(factor*normal_dist(generator));
+
+                for(std::size_t ii=0; ii < FBFUSE_NPOL*FBFUSE_NSAMPLES_PER_HEAP; ++ii)
+                {
+                    std::size_t idx = outerT*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NCHANS*FBFUSE_NPOL*FBFUSE_NSAMPLES_PER_HEAP +
+                                    A * FBFUSE_NCHANS*FBFUSE_NPOL*FBFUSE_NSAMPLES_PER_HEAP +
+                                    F * FBFUSE_NPOL*FBFUSE_NSAMPLES_PER_HEAP + ii;
+
+                    taftp_voltages_host[idx].x = static_cast<int8_t>(std::fmaxf(-127.0f,std::fminf(127.0f,val)));
+                    taftp_voltages_host[idx].y = static_cast<int8_t>(std::fmaxf(-127.0f,std::fminf(127.0f,val)));
+                }
+            }
+        }
     }
     // sync copy to the device
     thrust::device_vector<char2> taftp_voltages_gpu = taftp_voltages_host;
@@ -156,7 +156,7 @@ TEST_F(ChannelScalingManagerTester, test_gaussian_noise)
     trigger.request_statistics();
     // Get levels from the GPU
     BOOST_LOG_TRIVIAL(debug) << "Running Statistics kernel";
-    level_manager.channel_statistics(nsamples, taftp_voltages_gpu);
+    level_manager.channel_statistics(taftp_voltages_gpu);
     // Get levels from the CPU
     calculate_std_cpu(nsamples, taftp_voltages_host, input_level);
     //check if they are the same

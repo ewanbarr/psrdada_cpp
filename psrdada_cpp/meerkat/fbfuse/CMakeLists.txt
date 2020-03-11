@@ -7,9 +7,12 @@ if(ENABLE_CUDA)
 
    set(psrdada_cpp_meerkat_fbfuse_src
       src/PipelineConfig.cpp
+      src/BufferDump.cpp
+      src/ChannelScalingManager.cu
       src/DelayEngineSimulator.cu
       src/DelayManager.cu
       src/GainManager.cu
+      src/GainEngineSimulator.cu
       src/IncoherentBeamformer.cu
       src/CoherentBeamformer.cu
       src/WeightsManager.cu
@@ -40,8 +43,9 @@ add_executable(beam_bandpass_shm src/beam_bandpass_shm_cli.cpp)
 target_link_libraries(beam_bandpass_shm ${PSRDADA_CPP_MEERKAT_FBFUSE_LIBRARIES} rt)
 install(TARGETS beam_bandpass_shm DESTINATION bin)
 
-add_executable(bufferdump_to_null src/bufferdump_to_null_cli.cpp)
-target_link_libraries(bufferdump_to_null ${PSRDADA_CPP_MEERKAT_FBFUSE_LIBRARIES})
+add_executable(bufferdump_to_file src/bufferdump_to_file_cli.cpp)
+target_link_libraries(bufferdump_to_file ${PSRDADA_CPP_MEERKAT_FBFUSE_LIBRARIES})
+
 
 add_subdirectory(test)
 
