@@ -81,6 +81,31 @@ bool SigprocFileWriter::operator()(RawBytes& block)
 
 void SigprocFileWriter::new_stream()
 {
+    //debugging
+        std::cout << _header.rawfile << std::endl;
+        std::cout << _header.source << std::endl;
+        std::cout << _header.az << std::endl;                      
+        std::cout << _header.dec << std::endl;                     
+        std::cout << _header.fch1 << std::endl;                    
+        std::cout << _header.foff << std::endl;                    
+        std::cout << _header.ra << std::endl;                      
+        std::cout << _header.rdm << std::endl;                     
+        std::cout << _header.tsamp << std::endl;                   
+        std::cout << _header.tstart << std::endl;                  
+        std::cout << _header.za << std::endl;                      
+        std::cout << _header.datatype << std::endl;                
+        std::cout << _header.barycentric << std::endl;             
+        std::cout << _header.ibeam << std::endl;                   
+        std::cout << _header.machineid << std::endl;
+        std::cout << _header.nbeams << std::endl;
+        std::cout << _header.nbits << std::endl;
+        std::cout << _header.nchans << std::endl;
+        std::cout << _header.nifs << std::endl;
+        std::cout << _header.telescopeid << std::endl;
+
+
+
+
     // Here we should update the tstart of the default header to be the
     // start of the stream
     _header.tstart = _header.tstart + ((
