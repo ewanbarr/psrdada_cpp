@@ -62,50 +62,57 @@ bool SigprocFileWriter::operator()(RawBytes& block)
 {
     if (_state == ENABLED)
     {
+        BOOST_LOG_TRIVIAL(debug) << "(" << _tag << ") Writer state is ENABLED";
         if ((_stream == nullptr) || _new_stream_required)
         {
             new_stream();
         }
+        // Also debugging print here the block index
+        BOOST_LOG_TRIVIAL(debug) << "Writing DADA block at: " << block.ptr();
         _stream->write(block.ptr(), block.used_bytes());
     }
     else if (_state == DISABLED)
     {
+        BOOST_LOG_TRIVIAL(debug) << "(" << _tag << ") Writer state is DISABLED";
         if (_stream != nullptr)
         {
             _stream.reset(nullptr);
         }
     }
+    else
+    {
+        BOOST_LOG_TRIVIAL(error) << "(" << _tag << ") Writer state is neither ENABLED or DISABLED";
+    }
     _total_bytes += block.used_bytes();
+    // For debugging purposes we memset the buffer to zero here to
+    // avoid "ghost" pulses
+    std::memset(block.ptr(), 0, block.used_bytes());
     return false;
 }
 
 void SigprocFileWriter::new_stream()
 {
-    //debugging
-        std::cout << _header.rawfile << std::endl;
-        std::cout << _header.source << std::endl;
-        std::cout << _header.az << std::endl;                      
-        std::cout << _header.dec << std::endl;                     
-        std::cout << _header.fch1 << std::endl;                    
-        std::cout << _header.foff << std::endl;                    
-        std::cout << _header.ra << std::endl;                      
-        std::cout << _header.rdm << std::endl;                     
-        std::cout << _header.tsamp << std::endl;                   
-        std::cout << _header.tstart << std::endl;                  
-        std::cout << _header.za << std::endl;                      
-        std::cout << _header.datatype << std::endl;                
-        std::cout << _header.barycentric << std::endl;             
-        std::cout << _header.ibeam << std::endl;                   
-        std::cout << _header.machineid << std::endl;
-        std::cout << _header.nbeams << std::endl;
-        std::cout << _header.nbits << std::endl;
-        std::cout << _header.nchans << std::endl;
-        std::cout << _header.nifs << std::endl;
-        std::cout << _header.telescopeid << std::endl;
-
-
-
-
+    BOOST_LOG_TRIVIAL(info) << "Header parameters for new file with tag '" << _tag << "':";
+    BOOST_LOG_TRIVIAL(info) << "rawfile: " << _header.rawfile;
+    BOOST_LOG_TRIVIAL(info) << "source: " << _header.source;
+    BOOST_LOG_TRIVIAL(info) << "az: " << _header.az;
+    BOOST_LOG_TRIVIAL(info) << "dec: " << _header.dec;
+    BOOST_LOG_TRIVIAL(info) << "fch1: " << _header.fch1;
+    BOOST_LOG_TRIVIAL(info) << "foff: " << _header.foff;
+    BOOST_LOG_TRIVIAL(info) << "ra: " << _header.ra;
+    BOOST_LOG_TRIVIAL(info) << "rdm: " << _header.rdm;
+    BOOST_LOG_TRIVIAL(info) << "tsamp: " << _header.tsamp;
+    BOOST_LOG_TRIVIAL(info) << "tstart: " << _header.tstart;
+    BOOST_LOG_TRIVIAL(info) << "za: " << _header.za;
+    BOOST_LOG_TRIVIAL(info) << "datatype: " << _header.datatype;
+    BOOST_LOG_TRIVIAL(info) << "barycentric: " << _header.barycentric;
+    BOOST_LOG_TRIVIAL(info) << "ibeam: " << _header.ibeam;
+    BOOST_LOG_TRIVIAL(info) << "machineid: " << _header.machineid;
+    BOOST_LOG_TRIVIAL(info) << "nbeams: " << _header.nbeams;
+    BOOST_LOG_TRIVIAL(info) << "nbits: " << _header.nbits;
+    BOOST_LOG_TRIVIAL(info) << "nchans: " << _header.nchans;
+    BOOST_LOG_TRIVIAL(info) << "nifs: " << _header.nifs;
+    BOOST_LOG_TRIVIAL(info) << "telescopeid: " << _header.telescopeid;
     // Here we should update the tstart of the default header to be the
     // start of the stream
     _header.tstart = _header.tstart + ((

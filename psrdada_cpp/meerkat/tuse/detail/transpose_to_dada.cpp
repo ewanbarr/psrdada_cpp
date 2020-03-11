@@ -64,7 +64,7 @@ namespace tuse {
 
 		catch(...)
 		{
-			BOOST_LOG_TRIVIAL(debug) << "Unknown exception caught";
+			BOOST_LOG_TRIVIAL(error) << "Unknown exception caught in transpose code";
 		}
 		return false;
 	}
