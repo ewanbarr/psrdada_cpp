@@ -38,34 +38,43 @@ namespace tuse {
 		std::uint32_t ii;
 		std::vector<std::thread> threads;
 		auto transpose_size = _nchans * _nsamples * _nfreq * _ngroups;
-		try
+		_transpose_buffers.resize(_numbeams);
+		for (auto& buffer: _transpose_buffers)
 		{
-			for(ii=0; ii< _numbeams; ii++)
+			buffer.resize(transpose_size)
+		}
+		bool thread_error = false;
+		for(ii=0; ii< _numbeams; ii++)
+		{
+			threads.emplace_back(std::thread([&, ii]()
 			{
-				threads.emplace_back(std::thread([&, ii]()
-				{
-                    char* o_data = new char[transpose_size];
-					RawBytes transpose(o_data,std::size_t(transpose_size),std::size_t(0));
-					transpose::do_transpose(transpose, block, _nchans, _nsamples, _nfreq, ii, _numbeams, _ngroups);
-					transpose.used_bytes(transpose.total_bytes());
-					(*_handler[ii])(transpose);
-                    delete [] o_data;
-				}
-				));
-
+                try
+                {
+                    char* o_data = _transpose_buffers[ii].data();
+                    RawBytes transpose(o_data,std::size_t(transpose_size),std::size_t(0));
+                    transpose::do_transpose(transpose, block, _nchans, _nsamples, _nfreq, ii, _numbeams, _ngroups);
+                    transpose.used_bytes(transpose.total_bytes());
+                    (*_handler[ii])(transpose);
+                }
+                catch (...)
+                {
+                	BOOST_LOG_TRIVIAL(error) << "Error in transpose thread";
+                	thread_error = true;
+                }
 			}
-
-			for (ii=0; ii< _numbeams; ii++)
-			{
-				threads[ii].join();
-			}
-
+			));
 		}
 
-		catch(...)
+		for (ii=0; ii< _numbeams; ii++)
 		{
-			BOOST_LOG_TRIVIAL(error) << "Unknown exception caught in transpose code";
+			threads[ii].join();
 		}
+
+		if (thread_error)
+		{
+			throw std::runtime_error("Unknonw error in transpose thread");
+		}
+
 		return false;
 	}
 

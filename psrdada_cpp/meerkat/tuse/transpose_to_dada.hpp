@@ -113,6 +113,7 @@ private:
     std::uint32_t _nsamples;
     std::uint32_t _nfreq;
     std::uint32_t _ngroups;
+    std::vector<std::vector<char>> _transpose_buffers;
 
 };
 
