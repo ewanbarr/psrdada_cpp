@@ -56,9 +56,19 @@ namespace tuse {
                     transpose.used_bytes(transpose.total_bytes());
                     (*_handler[ii])(transpose);
                 }
+                catch (const std::exception& ex)
+                {
+                	BOOST_LOG_TRIVIAL(error) << "Error in transpose thread: " << ex.what();
+                	thread_error = true;
+                }
+                catch (const std::string& ex)
+                {
+                	BOOST_LOG_TRIVIAL(error) << "Error in transpose thread: " << ex;
+                	thread_error = true;
+                }
                 catch (...)
                 {
-                	BOOST_LOG_TRIVIAL(error) << "Error in transpose thread";
+                	BOOST_LOG_TRIVIAL(error) << "Unknown error in transpose thread";
                 	thread_error = true;
                 }
 			}
@@ -72,7 +82,7 @@ namespace tuse {
 
 		if (thread_error)
 		{
-			throw std::runtime_error("Unknonw error in transpose thread");
+			throw std::runtime_error("Unknown error in transpose thread");
 		}
 
 		return false;
