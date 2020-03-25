@@ -24,7 +24,7 @@ namespace tuse {
 		_transpose_buffers.resize(_numbeams);
 		for (auto& buffer: _transpose_buffers)
 		{
-			buffer.resize(transpose_size)
+			buffer.resize(transpose_size);
 		}
 	}
 
