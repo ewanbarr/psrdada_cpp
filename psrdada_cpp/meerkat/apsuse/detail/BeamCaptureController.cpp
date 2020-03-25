@@ -195,7 +195,7 @@ void BeamCaptureController<FileWritersType>::get_message(Message& message)
         std::memset(_msg_buffer, 0, sizeof(_msg_buffer));
         std::stringstream message_stream;
         message_stream << message_string;
-        BOOST_LOG_TRIVIAL(debug) << "Received string: " << message_stream.str();
+        //BOOST_LOG_TRIVIAL(debug) << "Received string: " << message_stream.str();
         boost::property_tree::json_parser::read_json(message_stream, pt);
 
         // First parse out the message command
