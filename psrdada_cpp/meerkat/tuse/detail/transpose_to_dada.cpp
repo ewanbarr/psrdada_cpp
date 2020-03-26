@@ -15,12 +15,6 @@ namespace tuse {
 	, _nfreq(32)
 	, _ngroups(10)
 	{
-		std::size_t transpose_size = _nchans * _nsamples * _nfreq * _ngroups;
-		_transpose_buffers.resize(_numbeams);
-		for (auto& buffer: _transpose_buffers)
-		{
-			buffer.resize(transpose_size);
-		}
 	}
 
 	template <class HandlerType>
@@ -44,6 +38,11 @@ namespace tuse {
 		std::uint32_t ii;
 		std::vector<std::thread> threads;
 		std::size_t transpose_size = _nchans * _nsamples * _nfreq * _ngroups;
+		_transpose_buffers.resize(_numbeams);
+		for (auto& buffer: _transpose_buffers)
+		{
+			buffer.resize(transpose_size);
+		}
 		bool thread_error = false;
 		for(ii=0; ii< _numbeams; ii++)
 		{
