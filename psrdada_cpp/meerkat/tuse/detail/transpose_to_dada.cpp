@@ -15,17 +15,17 @@ namespace tuse {
 	, _nfreq(32)
 	, _ngroups(10)
 	{
-	}
-
-	template <class HandlerType>
-	TransposeToDada<HandlerType>::~TransposeToDada()
-	{
 		std::size_t transpose_size = _nchans * _nsamples * _nfreq * _ngroups;
 		_transpose_buffers.resize(_numbeams);
 		for (auto& buffer: _transpose_buffers)
 		{
 			buffer.resize(transpose_size);
 		}
+	}
+
+	template <class HandlerType>
+	TransposeToDada<HandlerType>::~TransposeToDada()
+	{
 	}
 
 	template <class HandlerType>
