@@ -46,6 +46,13 @@ public:
      */
     bool operator()(RawBytes& block);
 
+    /**
+     * @brief      Force a resize of the transpose buffer
+     *
+     * @detail     Used to allow for preallocation of memory in the transpose
+     *             to reduce lag on the initial operator() call
+     */
+    void resize_transpose_buffers();
 
 	/**
  	 *@brief: Setter for number of beams

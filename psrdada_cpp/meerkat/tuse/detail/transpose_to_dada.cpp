@@ -38,11 +38,7 @@ namespace tuse {
 		std::uint32_t ii;
 		std::vector<std::thread> threads;
 		std::size_t transpose_size = _nchans * _nsamples * _nfreq * _ngroups;
-		_transpose_buffers.resize(_numbeams);
-		for (auto& buffer: _transpose_buffers)
-		{
-			buffer.resize(transpose_size);
-		}
+		resize_transpose_buffers();
 		bool thread_error = false;
 		for(ii=0; ii< _numbeams; ii++)
 		{
@@ -86,6 +82,17 @@ namespace tuse {
 		}
 
 		return false;
+	}
+
+	template <class HandlerType>
+	void TransposeToDada<HandlerType>::resize_transpose_buffers()
+	{
+		std::size_t transpose_size = _nchans * _nsamples * _nfreq * _ngroups;
+		_transpose_buffers.resize(_numbeams);
+		for (auto& buffer: _transpose_buffers)
+		{
+			buffer.resize(transpose_size);
+		}
 	}
 
 	template <class HandlerType>
