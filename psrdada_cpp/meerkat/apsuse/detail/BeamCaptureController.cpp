@@ -135,7 +135,7 @@ void BeamCaptureController<FileWritersType>::listen()
                         std::stringstream outdir;
                         outdir << message.directory << "/" << beam.name;
                         // Make the output directory
-                        if (mkdir(outdir.str().c_str(), S_IRWXU | S_IRGRP | S_IROTH) != 0)
+                        if (mkdir(outdir.str().c_str(), S_IRWXU | S_IRGRP | S_IROTH | S_IXGRP | S_IXOTH) != 0)
                         {
                             BOOST_LOG_TRIVIAL(error) << "Critical error, cannot create output directory: "
                             << outdir.str();
