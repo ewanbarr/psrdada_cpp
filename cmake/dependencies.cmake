@@ -10,6 +10,7 @@ set(DEPENDENCY_LIBRARIES
     ${Boost_LIBRARIES}
     ${PSRDADA_LIBRARIES}
     ${CUDA_CUDART_LIBRARY}
+    -fopenmp
 )
 
 find_package(OpenMP REQUIRED)
