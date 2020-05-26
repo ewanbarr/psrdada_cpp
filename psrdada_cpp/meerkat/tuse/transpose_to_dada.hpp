@@ -3,6 +3,7 @@
 
 #include "psrdada_cpp/raw_bytes.hpp"
 #include "psrdada_cpp/common.hpp"
+#include <vector>
 
 namespace psrdada_cpp {
 namespace meerkat {
@@ -45,6 +46,13 @@ public:
      */
     bool operator()(RawBytes& block);
 
+    /**
+     * @brief      Force a resize of the transpose buffer
+     *
+     * @detail     Used to allow for preallocation of memory in the transpose
+     *             to reduce lag on the initial operator() call
+     */
+    void resize_transpose_buffers();
 
 	/**
  	 *@brief: Setter for number of beams
@@ -113,6 +121,7 @@ private:
     std::uint32_t _nsamples;
     std::uint32_t _nfreq;
     std::uint32_t _ngroups;
+    std::vector<std::vector<char>> _transpose_buffers;
 
 };
 

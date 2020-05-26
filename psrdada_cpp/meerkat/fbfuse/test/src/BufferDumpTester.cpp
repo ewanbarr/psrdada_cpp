@@ -69,6 +69,7 @@ void send_json(long double starttime, long double endtime, float dm, float ref_f
         get_json(event_string, starttime, endtime, dm, ref_freq, trig_id);
         BOOST_LOG_TRIVIAL(debug) << "Sending Trigger...";
         send(socket, event_string.str());
+        receive(socket);
     }
     catch(std::exception& e)
     {
