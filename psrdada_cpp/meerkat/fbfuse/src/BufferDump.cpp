@@ -283,7 +283,7 @@ namespace fbfuse{
             BOOST_LOG_TRIVIAL(debug) << "Calculating sample offsets for each channel";
             for (std::size_t ii = 0; ii < _subband_nchans; ++ii)
             {
-                double channel_freq = ((_centre_freq + _bw/2.0f) - chan_bw/2.0f) - ii * chan_bw;
+                double channel_freq = (_centre_freq - _bw/2.0f) + ii * chan_bw;
                 BOOST_LOG_TRIVIAL(debug) << "Ref_freq: " << event.reference_freq << " channel_freq: " << channel_freq;
                 double delay = dm_delay(event.reference_freq, channel_freq, event.dm, tsamp);
                 left_edge_of_output[ii] = static_cast<std::size_t>(delay) + start_sample;
@@ -358,7 +358,7 @@ namespace fbfuse{
 
                         for (std::size_t antenna_idx = 0; antenna_idx < _nantennas; ++antenna_idx)
                         {
-                            _tmp_buffer[output_idx + antenna_idx * o_t] = block.ptr()[input_idx + antenna_idx * i_ft];
+                            _tmp_buffer[output_idx + antenna_idx * o_t] = reinterpret_cast<unsigned*>(block.ptr())[input_idx + antenna_idx * i_ft];
                         }
                     }
                 }
