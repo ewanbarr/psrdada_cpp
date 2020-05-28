@@ -44,7 +44,7 @@ namespace fbfuse {
  *          bandwidth: Bandwidth of the subband
  **/
 
- 
+
     class BufferDump
     {
         public:
@@ -57,7 +57,8 @@ namespace fbfuse {
                     std::size_t subband_nchannels,
                     std::size_t total_nchannels,
                     float centre_freq,
-                    float bandwidth);
+                    float bandwidth,
+                    std::string outdir);
             ~BufferDump();
             void start();
             void stop();
@@ -80,6 +81,7 @@ namespace fbfuse {
             std::size_t _total_nchans;
             float _centre_freq;
             float _bw;
+            std::string _outdir;
             std::size_t _current_block_idx;
             bool _stop;
             std::vector<unsigned> _tmp_buffer;
