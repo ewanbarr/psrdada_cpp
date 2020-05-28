@@ -70,7 +70,7 @@ int main(int argc, char** argv)
         ("centre_freq,c", po::value<float>(&centre_freq)->required(),
             "Centre Frequency")
         ("bandwidth,b", po::value<float>(&bandwidth)->required(),
-            "Bandwidth of one subband");
+            "Bandwidth of one subband")
         ("outdir,o", po::value<std::string>(&outdir)->default_value("./"),
             "Output directory to write results to.");
 
