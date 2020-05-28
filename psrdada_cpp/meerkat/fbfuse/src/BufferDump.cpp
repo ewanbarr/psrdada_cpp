@@ -80,7 +80,8 @@ namespace fbfuse{
                 std::size_t subband_nchannels,
                 std::size_t total_nchannels,
                 float centre_freq,
-                float bandwidth)
+                float bandwidth,
+                std::string outdir)
           : _socket_name(socket_name)
           , _max_fill_level(max_fill_level)
           , _nantennas(nantennas)
@@ -88,11 +89,11 @@ namespace fbfuse{
           , _total_nchans(total_nchannels)
           , _centre_freq(centre_freq)
           , _bw(bandwidth)
+          , _outdir(outdir)
           , _current_block_idx(0)
           , _stop(false)
           , _socket(nullptr)
     {
-
         _client.reset(new DadaReadClient(key, log));
         std::memset(_event_msg_buffer, 0, sizeof(_event_msg_buffer));
         std::memset(_header_buffer, 0, sizeof(_header_buffer));
@@ -242,7 +243,7 @@ namespace fbfuse{
             }
             catch(std::exception& e)
             {
-                BOOST_LOG_TRIVIAL(error) << "Error in capturing event: " << e.what(); 
+                BOOST_LOG_TRIVIAL(error) << "Error in capturing event: " << e.what();
             }
         }
 
@@ -376,7 +377,7 @@ namespace fbfuse{
             parser.set<std::string>("TRIGGER_ID", event.trigger_id);
             parser.set<std::size_t>("BLOCK_DIFF", block_diff);
             // Open file for writing
-            std::string filename = time_now() + ".dat";
+            std::string filename = _outdir + "/" + time_now() + ".dat";
             std::size_t sample_clock_start = start_sample * _total_nchans * 2;
             parser.set<std::size_t>("SAMPLE_CLOCK_START", sample_clock_start);
             BOOST_LOG_TRIVIAL(debug) << "Outputing data to a file";

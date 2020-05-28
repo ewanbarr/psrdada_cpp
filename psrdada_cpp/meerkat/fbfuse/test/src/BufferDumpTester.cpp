@@ -138,7 +138,7 @@ TEST_F(BufferDumpTester, do_nothing)
     //DadaReadClient reader(buffer.key(), log);
     BufferDump dumper(buffer.key(), log, "/tmp/buffer_dump_test.sock",
                                       max_fill_level, nantennas, nchans,
-                                      total_nchans, cfreq, bw );
+                                      total_nchans, cfreq, bw, "./");
 
     std::thread dumper_thread([&](){
         dumper.start();
@@ -191,7 +191,7 @@ TEST_F(BufferDumpTester, read_event)
     //DadaReadClient reader(buffer.key(), log);
     BufferDump dumper(buffer.key(), log, "/tmp/buffer_dump_test.sock",
                                       max_fill_level, nantennas, nchans,
-                                      total_nchans, cfreq, bw );
+                                      total_nchans, cfreq, bw, "./");
 
     std::thread dumper_thread([&](){
         dumper.start();
