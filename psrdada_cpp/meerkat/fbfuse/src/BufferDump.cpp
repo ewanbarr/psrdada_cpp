@@ -295,8 +295,8 @@ namespace fbfuse{
                     << right_edge_of_output[ii] << ")";
             }
 
-            std::size_t start_block_idx = left_edge_of_output[0] / samples_per_block;
-            std::size_t end_block_idx = right_edge_of_output[_subband_nchans-1] / samples_per_block;
+            std::size_t start_block_idx = left_edge_of_output[_subband_nchans-1] / samples_per_block;
+            std::size_t end_block_idx = right_edge_of_output[0] / samples_per_block;
             BOOST_LOG_TRIVIAL(debug) << "First DADA block to extract from = " << start_block_idx;
             BOOST_LOG_TRIVIAL(debug) << "Last DADA block to extract from = " << end_block_idx;
             while (_current_block_idx < start_block_idx)
@@ -373,7 +373,11 @@ namespace fbfuse{
             parser.set<long double>("UTC_START", event.utc_start);
             parser.set<long double>("UTC_END", event.utc_end);
             parser.set<long double>("DM", event.dm);
-            parser.set<long double>("FREQ", event. reference_freq);
+            parser.set<long double>("REFFREQ", event.reference_freq);
+            parser.set<long double>("FREQ", _centre_freq);
+            parser.set<long double>("BW", _bw);
+            parser.set<std::size_t>("NCHANS", _subband_nchans);
+            parser.set<std::size_t>("TOTAL_NCHANS", _total_nchans);
             parser.set<std::string>("TRIGGER_ID", event.trigger_id);
             parser.set<std::size_t>("BLOCK_DIFF", block_diff);
             // Open file for writing
