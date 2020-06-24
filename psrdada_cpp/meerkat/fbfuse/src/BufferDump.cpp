@@ -81,7 +81,8 @@ namespace fbfuse{
                 std::size_t subband_nchannels,
                 std::size_t total_nchannels,
                 float centre_freq,
-                float bandwidth)
+                float bandwidth,
+                std::string outdir)
           : _socket_name(socket_name)
           , _max_fill_level(max_fill_level)
           , _nantennas(nantennas)
@@ -89,11 +90,11 @@ namespace fbfuse{
           , _total_nchans(total_nchannels)
           , _centre_freq(centre_freq)
           , _bw(bandwidth)
+          , _outdir(outdir)
           , _current_block_idx(0)
           , _stop(false)
           , _socket(nullptr)
     {
-
         _client.reset(new DadaReadClient(key, log));
         std::memset(_event_msg_buffer, 0, sizeof(_event_msg_buffer));
         std::memset(_header_buffer, 0, sizeof(_header_buffer));
@@ -139,7 +140,7 @@ namespace fbfuse{
             auto& header_block = _client->header_stream().next();
             Header parser(header_block);
             _sample_clock_start = parser.get<std::size_t>("SAMPLE_CLOCK_START");
-            _sample_clock = parser.get<std::size_t>("SAMPLE_CLOCK");
+            _sample_clock = parser.get<long double>("SAMPLE_CLOCK");
             _sync_time = parser.get<long double>("SYNC_TIME");
             BOOST_LOG_TRIVIAL(info) << "Parsed SAMPLE_CLOCK_START = " << _sample_clock_start;
             BOOST_LOG_TRIVIAL(info) << "Parsed SAMPLE_CLOCK = " << _sample_clock;
@@ -243,7 +244,7 @@ namespace fbfuse{
             }
             catch(std::exception& e)
             {
-                BOOST_LOG_TRIVIAL(error) << "Error in capturing event: " << e.what(); 
+                BOOST_LOG_TRIVIAL(error) << "Error in capturing event: " << e.what();
             }
         }
 
@@ -257,25 +258,22 @@ namespace fbfuse{
             std::vector<std::size_t> left_edge_of_output(_subband_nchans);
             std::vector<std::size_t> right_edge_of_output(_subband_nchans);
             long double start_of_buffer = _sync_time + _sample_clock_start / _sample_clock;
-            BOOST_LOG_TRIVIAL(debug) << "Unix time at start of DADA buffer = " << start_of_buffer;
+            BOOST_LOG_TRIVIAL(info) << "Unix time at start of DADA buffer = " << start_of_buffer;
             long double tsamp = (2 * (double) _total_nchans) / (double) _sample_clock;
-            BOOST_LOG_TRIVIAL(debug) << "Sample interval = " << tsamp;
+            BOOST_LOG_TRIVIAL(info) << "Sample interval = " << tsamp;
             std::size_t start_sample = static_cast<std::size_t>((event.utc_start - start_of_buffer) / tsamp);
-            BOOST_LOG_TRIVIAL(debug) << "First input sample in output block (@reference freq) = " << start_sample;
+            BOOST_LOG_TRIVIAL(info) << "First input sample in output block (@reference freq) = " << start_sample;
             std::size_t end_sample = static_cast<std::size_t>((event.utc_end - start_of_buffer) / tsamp);
-            BOOST_LOG_TRIVIAL(debug) << "Last input sample in output block (@reference freq) = " << end_sample;
+            BOOST_LOG_TRIVIAL(info) << "Last input sample in output block (@reference freq) = " << end_sample;
             std::size_t nsamps = end_sample - start_sample;
-            BOOST_LOG_TRIVIAL(debug) << "Number of timesamples in output = " << nsamps;
+            BOOST_LOG_TRIVIAL(info) << "Number of timesamples in output = " << nsamps;
             float chan_bw = _bw / _subband_nchans;
-            BOOST_LOG_TRIVIAL(debug) << "Channel bandwidth = " << chan_bw;
+            BOOST_LOG_TRIVIAL(info) << "Channel bandwidth = " << chan_bw;
             std::size_t nelements = _subband_nchans * _nantennas * nsamps;
             BOOST_LOG_TRIVIAL(debug) << "Resizing output buffer to " << nelements << " elements";
             _tmp_buffer.resize(nelements,0xffffffff);
-
-
             std::size_t block_bytes = _client->data_buffer_size();
             std::size_t heap_group_bytes = _nantennas * _subband_nchans * 256 * sizeof(unsigned);
-
             if (block_bytes % heap_group_bytes != 0)
             {
                 throw std::runtime_error("Block bytes not divisible by heap group bytes");
@@ -284,7 +282,7 @@ namespace fbfuse{
             BOOST_LOG_TRIVIAL(debug) << "Calculating sample offsets for each channel";
             for (std::size_t ii = 0; ii < _subband_nchans; ++ii)
             {
-                double channel_freq = ((_centre_freq + _bw/2.0f) - chan_bw/2.0f) - ii * chan_bw;
+                double channel_freq = (_centre_freq - _bw/2.0f) + ii * chan_bw;
                 BOOST_LOG_TRIVIAL(debug) << "Ref_freq: " << event.reference_freq << " channel_freq: " << channel_freq;
                 double delay = dm_delay(event.reference_freq, channel_freq, event.dm, tsamp);
                 left_edge_of_output[ii] = static_cast<std::size_t>(delay) + start_sample;
@@ -295,11 +293,11 @@ namespace fbfuse{
                     << right_edge_of_output[ii] << ")";
             }
 
-            std::size_t start_block_idx = left_edge_of_output[0] / samples_per_block;
-            std::size_t end_block_idx = right_edge_of_output[_subband_nchans-1] / samples_per_block;
-            BOOST_LOG_TRIVIAL(debug) << "First DADA block to extract from = " << start_block_idx;
-            BOOST_LOG_TRIVIAL(debug) << "Last DADA block to extract from = " << end_block_idx;
-            std::size_t block_diff = start_block_idx - _current_block_idx;
+            std::size_t start_block_idx = left_edge_of_output[_subband_nchans-1] / samples_per_block;
+            std::size_t end_block_idx = right_edge_of_output[0] / samples_per_block;
+            BOOST_LOG_TRIVIAL(info) << "First DADA block to extract from = " << start_block_idx;
+            BOOST_LOG_TRIVIAL(info) << "Last DADA block to extract from = " << end_block_idx;
+
             while (_current_block_idx < start_block_idx)
             {
                 skip_block();
@@ -360,7 +358,7 @@ namespace fbfuse{
 
                         for (std::size_t antenna_idx = 0; antenna_idx < _nantennas; ++antenna_idx)
                         {
-                            _tmp_buffer[output_idx + antenna_idx * o_t] = block.ptr()[input_idx + antenna_idx * i_ft];
+                            _tmp_buffer[output_idx + antenna_idx * o_t] = reinterpret_cast<unsigned*>(block.ptr())[input_idx + antenna_idx * i_ft];
                         }
                     }
                 }
@@ -374,13 +372,21 @@ namespace fbfuse{
             parser.set<long double>("UTC_START", event.utc_start);
             parser.set<long double>("UTC_END", event.utc_end);
             parser.set<long double>("DM", event.dm);
-            parser.set<long double>("FREQ", event. reference_freq);
+            parser.set<long double>("REFFREQ", event.reference_freq);
+            parser.set<long double>("FREQ", _centre_freq);
+            parser.set<long double>("BW", _bw);
+            parser.set<std::size_t>("NCHANS", _subband_nchans);
+            parser.set<std::size_t>("TOTAL_NCHANS", _total_nchans);
             parser.set<std::string>("TRIGGER_ID", event.trigger_id);
             parser.set<std::size_t>("BLOCK_DIFF", block_diff);
             // Open file for writing
-            std::string filename = time_now() + ".dat";
+            std::string filename = _outdir + "/" + time_now() + ".dat";
             std::size_t sample_clock_start = start_sample * _total_nchans * 2;
             parser.set<std::size_t>("SAMPLE_CLOCK_START", sample_clock_start);
+            parser.set<std::size_t>("ORIGINAL_SCS", _sample_clock_start);
+            parser.set<std::size_t>("START_SAMPLE", start_sample);
+            parser.set<std::size_t>("END_SAMPLE", end_sample);
+            parser.set<std::size_t>("START_OF_BUFFER", start_of_buffer);
             BOOST_LOG_TRIVIAL(debug) << "Outputing data to a file";
             std::size_t nbytes = _tmp_buffer.size() * sizeof(char4);
 

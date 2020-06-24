@@ -69,6 +69,7 @@ void send_json(long double starttime, long double endtime, float dm, float ref_f
         get_json(event_string, starttime, endtime, dm, ref_freq, trig_id);
         BOOST_LOG_TRIVIAL(debug) << "Sending Trigger...";
         send(socket, event_string.str());
+        receive(socket);
     }
     catch(std::exception& e)
     {
@@ -137,7 +138,7 @@ TEST_F(BufferDumpTester, do_nothing)
     //DadaReadClient reader(buffer.key(), log);
     BufferDump dumper(buffer.key(), log, "/tmp/buffer_dump_test.sock",
                                       max_fill_level, nantennas, nchans,
-                                      total_nchans, cfreq, bw );
+                                      total_nchans, cfreq, bw, "./");
 
     std::thread dumper_thread([&](){
         dumper.start();
@@ -190,7 +191,7 @@ TEST_F(BufferDumpTester, read_event)
     //DadaReadClient reader(buffer.key(), log);
     BufferDump dumper(buffer.key(), log, "/tmp/buffer_dump_test.sock",
                                       max_fill_level, nantennas, nchans,
-                                      total_nchans, cfreq, bw );
+                                      total_nchans, cfreq, bw, "./");
 
     std::thread dumper_thread([&](){
         dumper.start();

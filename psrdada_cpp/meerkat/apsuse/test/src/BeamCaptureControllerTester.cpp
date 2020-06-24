@@ -178,13 +178,25 @@ TEST_F(BeamCaptureControllerTester, do_nothing)
     controller.start();
 
     std::size_t nblocks = 5;
-    std::size_t block_size = 2000;
+    std::size_t block_size = 20000;
     FilHead header;
     populate_header(header);
     char* header_ptr = new char[4096];
     RawBytes header_block(header_ptr, 4096, 4096);
     char* data_ptr = new char[block_size];
     RawBytes data_block(data_ptr, block_size, block_size);
+
+    
+    int* dp = reinterpret_cast<int*>(data_ptr);
+
+    for (int ii=0; ii<block_size/sizeof(int); ++ii)
+	{
+	    dp[ii] = ii;
+	}
+
+
+
+
     SigprocHeader parser;
     parser.write_header(header_ptr, header);
 

@@ -141,6 +141,7 @@ int main(int argc, char** argv)
         transpose.set_nfreq(nfreq);
         transpose.set_ngroups(ngroups);
         transpose.set_nbeams(nbeams);
+        transpose.resize_transpose_buffers();
         MultiLog log("instream");
         meerkat::apsuse::BeamCaptureController<decltype(files)> controller(socket_name, files);
         DadaInputStream<decltype(transpose)> input(input_key, log, transpose);

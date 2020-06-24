@@ -39,6 +39,7 @@ int main(int argc, char** argv)
         std::uint32_t nantennas;
         std::uint32_t subband_nchannels;
         std::uint32_t nchannels;
+        std::string outdir;
         float centre_freq;
         float bandwidth;
         std::string filesuffix;
@@ -69,7 +70,9 @@ int main(int argc, char** argv)
         ("centre_freq,c", po::value<float>(&centre_freq)->required(),
             "Centre Frequency")
         ("bandwidth,b", po::value<float>(&bandwidth)->required(),
-            "Bandwidth of one subband");
+            "Bandwidth of one subband")
+        ("outdir,o", po::value<std::string>(&outdir)->default_value("./"),
+            "Output directory to write results to.");
 
 
         /* Catch Error and program description */
@@ -99,7 +102,7 @@ int main(int argc, char** argv)
 
        /* Setting up the pipeline based on the type of sink*/
         MultiLog log1("instream");
-        meerkat::fbfuse::BufferDump dumper(input_key, log1, socket_name, max_fill_level, nantennas, subband_nchannels, nchannels, centre_freq, bandwidth);
+        meerkat::fbfuse::BufferDump dumper(input_key, log1, socket_name, max_fill_level, nantennas, subband_nchannels, nchannels, centre_freq, bandwidth, outdir);
         dumper.start();
 
       /* End Application Code */

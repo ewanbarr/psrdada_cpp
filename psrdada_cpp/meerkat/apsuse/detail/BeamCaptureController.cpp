@@ -3,6 +3,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/foreach.hpp>
+#include <sys/stat.h>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -131,7 +132,16 @@ void BeamCaptureController<FileWritersType>::listen()
                     _file_writers[beam.idx]->tag(beam.name);
                     if (!message.directory.empty())
                     {
-                        _file_writers[beam.idx]->directory(message.directory);
+                        std::stringstream outdir;
+                        outdir << message.directory << "/" << beam.name;
+                        // Make the output directory
+                        if (mkdir(outdir.str().c_str(), S_IRWXU | S_IRGRP | S_IROTH | S_IXGRP | S_IXOTH) != 0)
+                        {
+                            BOOST_LOG_TRIVIAL(error) << "Critical error, cannot create output directory: "
+                            << outdir.str();
+                            throw std::runtime_error(outdir.str());
+                        }
+                        _file_writers[beam.idx]->directory(outdir.str());
                     }
                     BOOST_LOG_TRIVIAL(info) << "Enabling file writing for beam " << beam.name;
                     _file_writers[beam.idx]->enable();
@@ -195,7 +205,7 @@ void BeamCaptureController<FileWritersType>::get_message(Message& message)
         std::memset(_msg_buffer, 0, sizeof(_msg_buffer));
         std::stringstream message_stream;
         message_stream << message_string;
-        BOOST_LOG_TRIVIAL(debug) << "Received string: " << message_stream.str();
+        //BOOST_LOG_TRIVIAL(debug) << "Received string: " << message_stream.str();
         boost::property_tree::json_parser::read_json(message_stream, pt);
 
         // First parse out the message command
