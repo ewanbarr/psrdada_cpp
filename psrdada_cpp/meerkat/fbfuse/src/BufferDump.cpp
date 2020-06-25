@@ -258,7 +258,7 @@ namespace fbfuse{
             std::vector<std::size_t> right_edge_of_output(_subband_nchans);
             long double start_of_buffer = _sync_time + _sample_clock_start / _sample_clock;
             BOOST_LOG_TRIVIAL(info) << "Unix time at start of DADA buffer = " << start_of_buffer;
-            long double tsamp = (2 * (double) _total_nchans) / (double) _sample_clock;
+            long double tsamp = (2 * (long double) _total_nchans) / (long double) _sample_clock;
             BOOST_LOG_TRIVIAL(info) << "Sample interval = " << tsamp;
             std::size_t start_sample = static_cast<std::size_t>((event.utc_start - start_of_buffer) / tsamp);
             BOOST_LOG_TRIVIAL(info) << "First input sample in output block (@reference freq) = " << start_sample;
@@ -373,6 +373,7 @@ namespace fbfuse{
             parser.set<long double>("REFFREQ", event.reference_freq);
             parser.set<long double>("FREQ", _centre_freq);
             parser.set<long double>("BW", _bw);
+            parser.set<long double>("TSAMP", tsamp);
             parser.set<std::size_t>("NCHANS", _subband_nchans);
             parser.set<std::size_t>("TOTAL_NCHANS", _total_nchans);
             parser.set<std::string>("TRIGGER_ID", event.trigger_id);
@@ -384,7 +385,7 @@ namespace fbfuse{
             parser.set<std::size_t>("ORIGINAL_SCS", _sample_clock_start);
             parser.set<std::size_t>("START_SAMPLE", start_sample);
             parser.set<std::size_t>("END_SAMPLE", end_sample);
-            parser.set<std::size_t>("START_OF_BUFFER", start_of_buffer);
+            parser.set<long double>("START_OF_BUFFER", start_of_buffer);
             BOOST_LOG_TRIVIAL(debug) << "Outputing data to a file";
             std::size_t nbytes = _tmp_buffer.size() * sizeof(char4);
 
