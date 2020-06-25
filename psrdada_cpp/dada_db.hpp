@@ -32,7 +32,8 @@ class DadaDB
         DadaDB(uint64_t nbufs = DADA_DEFAULT_BLOCK_NUM,
                    uint64_t bufsz = DADA_DEFAULT_BLOCK_SIZE,
                    uint64_t nhdrs = IPCBUF_XFERS,
-                   uint64_t hdrsz = DADA_DEFAULT_HEADER_SIZE);
+                   uint64_t hdrsz = DADA_DEFAULT_HEADER_SIZE,
+                   size_t nreaders = 1);
         DadaDB(DadaDB const&) = delete;
         ~DadaDB();
 
@@ -93,6 +94,7 @@ class DadaDB
         bool _data_blocks_created;
         bool _header_blocks_created;
         std::mutex _lock;
+        std::size_t _nreaders;
 };
 
 } // namespace psrdada_cpp

@@ -40,6 +40,7 @@ namespace
         {
             BOOST_LOG_TRIVIAL(error) << "Error in send";
             BOOST_LOG_TRIVIAL(error) << e.what();
+            throw;
         }
     }
 
@@ -60,7 +61,7 @@ namespace
         {
             BOOST_LOG_TRIVIAL(error) << "Error in send_json";
             BOOST_LOG_TRIVIAL(error) << e.what();
-            exit(1);
+            throw;
         }
     }
 
@@ -253,6 +254,7 @@ namespace fbfuse{
             bool write_flag=false;
             std::size_t output_left_idx = 0, output_right_idx = 0;
             std::size_t block_left_idx = 0;
+            std::size_t block_diff = 0;
             // block_right_idx = 0;
             std::vector<std::size_t> left_edge_of_output(_subband_nchans);
             std::vector<std::size_t> right_edge_of_output(_subband_nchans);
@@ -275,7 +277,7 @@ namespace fbfuse{
             std::size_t heap_group_bytes = _nantennas * _subband_nchans * 256 * sizeof(unsigned);
             if (block_bytes % heap_group_bytes != 0)
             {
-                throw std::runtime_error("...");
+                throw std::runtime_error("Block bytes not divisible by heap group bytes");
             }
             std::size_t samples_per_block = 256 * (block_bytes / heap_group_bytes);
             BOOST_LOG_TRIVIAL(debug) << "Calculating sample offsets for each channel";
@@ -296,6 +298,7 @@ namespace fbfuse{
             std::size_t end_block_idx = right_edge_of_output[0] / samples_per_block;
             BOOST_LOG_TRIVIAL(info) << "First DADA block to extract from = " << start_block_idx;
             BOOST_LOG_TRIVIAL(info) << "Last DADA block to extract from = " << end_block_idx;
+
             while (_current_block_idx < start_block_idx)
             {
                 skip_block();
@@ -306,14 +309,15 @@ namespace fbfuse{
             std::size_t o_t = nsamps;
             std::size_t o_at = _nantennas * o_t;
 
-            std::size_t block_diff = start_block_idx - _current_block_idx;
             while (_current_block_idx <= end_block_idx)
             {
                 write_flag= true;
                 BOOST_LOG_TRIVIAL(debug) << "Extracting data from block " << _current_block_idx;
                 RawBytes& block = _client->data_stream().next();
+                // TODO: Compute and add start and end times for the actual event
                 std::size_t block_start = _current_block_idx * samples_per_block;
                 std::size_t block_end = (_current_block_idx + 1) * samples_per_block;
+                block_diff = block_end - block_start;
                 for (std::size_t chan_idx = 0; chan_idx < _subband_nchans; ++chan_idx)
                 {
                     if ((left_edge_of_output[chan_idx] > block_end) ||
@@ -404,6 +408,7 @@ namespace fbfuse{
                     BOOST_LOG_TRIVIAL(error) << error_message.str();
                     throw std::runtime_error(error_message.str());
                 }
+                // Add an output path as a command line argument
                 writer.write(_header_buffer, 4096);
                 writer.write((char*) _tmp_buffer.data(), nbytes);
                 writer.close();
