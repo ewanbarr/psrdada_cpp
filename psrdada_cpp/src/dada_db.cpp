@@ -64,7 +64,7 @@ key_t random_dada_key()
 
 } // namespace detail
 
-DadaDB::DadaDB(uint64_t nbufs, uint64_t bufsz, uint64_t nhdrs,  uint64_t hdrsz)
+DadaDB::DadaDB(uint64_t nbufs, uint64_t bufsz, uint64_t nhdrs,  uint64_t hdrsz, std::size_t nreaders)
     : _nbufs(nbufs)
     , _bufsz(bufsz)
     , _nhdrs(nhdrs)
@@ -74,6 +74,7 @@ DadaDB::DadaDB(uint64_t nbufs, uint64_t bufsz, uint64_t nhdrs,  uint64_t hdrsz)
     , _header(IPCBUF_INIT)
     , _data_blocks_created(false)
     , _header_blocks_created(false)
+    , _nreaders(nreaders)
 {
 }
 
@@ -92,7 +93,7 @@ void DadaDB::create()
     BOOST_LOG_TRIVIAL(info) << "Using DADA key: " << std::hex << _dada_key << std::dec;
 
     //Here we always assume that the number of readers will be 1.
-    if (ipcbuf_create (&_data_block, _dada_key, _nbufs, _bufsz, 1) < 0) {
+    if (ipcbuf_create (&_data_block, _dada_key, _nbufs, _bufsz, _nreaders) < 0) {
         do_destroy();
         throw std::runtime_error("Could not create DADA data block");
     }
@@ -101,7 +102,7 @@ void DadaDB::create()
 
     if (_header_blocks_created)
         throw std::runtime_error("DADA header blocks already created");
-    if (ipcbuf_create (&_header, _dada_key + 1, _nhdrs, _hdrsz, 1) < 0) {
+    if (ipcbuf_create (&_header, _dada_key + 1, _nhdrs, _hdrsz, _nreaders) < 0) {
         do_destroy();
         throw std::runtime_error("Could not create DADA header block");
     }

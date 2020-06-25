@@ -254,6 +254,7 @@ namespace fbfuse{
             bool write_flag=false;
             std::size_t output_left_idx = 0, output_right_idx = 0;
             std::size_t block_left_idx = 0;
+            std::size_t block_diff = 0;
             // block_right_idx = 0;
             std::vector<std::size_t> left_edge_of_output(_subband_nchans);
             std::vector<std::size_t> right_edge_of_output(_subband_nchans);
@@ -316,6 +317,7 @@ namespace fbfuse{
                 // TODO: Compute and add start and end times for the actual event
                 std::size_t block_start = _current_block_idx * samples_per_block;
                 std::size_t block_end = (_current_block_idx + 1) * samples_per_block;
+                block_diff = block_end - block_start;
                 for (std::size_t chan_idx = 0; chan_idx < _subband_nchans; ++chan_idx)
                 {
                     if ((left_edge_of_output[chan_idx] > block_end) ||

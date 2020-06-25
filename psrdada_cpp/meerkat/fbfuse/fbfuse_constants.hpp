@@ -11,7 +11,6 @@
 #define FBFUSE_CB_TSCRUNCH 16
 #define FBFUSE_CB_FSCRUNCH 1
 #define FBFUSE_CB_NANTENNAS 64
->>>>>>> fbfuse_complex_gain_correction
 #define FBFUSE_CB_ANTENNA_OFFSET 0
 #define FBFUSE_CB_NBEAMS 1024
 #define FBFUSE_CB_NTHREADS 1024

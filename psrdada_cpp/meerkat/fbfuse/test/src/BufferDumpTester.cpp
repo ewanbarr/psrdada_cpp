@@ -3,6 +3,7 @@
 #include "psrdada_cpp/dada_db.hpp"
 #include "psrdada_cpp/dada_null_sink.hpp"
 #include "psrdada_cpp/dada_output_stream.hpp"
+#include "psrdada_cpp/dada_input_stream.hpp"
 #include "psrdada_cpp/Header.hpp"
 #include <iostream>
 #include <boost/asio.hpp>
@@ -151,6 +152,75 @@ TEST_F(BufferDumpTester, do_nothing)
     dumper_thread.join();
 }
 
+TEST_F(BufferDumpTester, test_two_readers)
+{
+    boost::asio::io_service io_service;
+    boost::asio::local::stream_protocol::socket socket(io_service);
+
+    std::size_t nchans = 64;
+    std::size_t total_nchans = 4096;
+    std::size_t nantennas = 64;
+    std::size_t ngroups = 8;
+    std::size_t nblocks = 64;
+    std::size_t block_size = nchans * nantennas * ngroups * 256 * sizeof(unsigned);
+
+    float cfreq = 856e6;
+    float bw = 856e6 / (total_nchans / nchans);
+    float max_fill_level = 0.8;
+
+    DadaDB buffer(nblocks, block_size, 4, 4096,2);
+    buffer.create();
+    MultiLog outlog("outstream");
+    MultiLog inlog("instream");
+    MultiLog bufferlog("tbbstream");
+    DadaOutputStream ostream(buffer.key(), outlog);
+
+    std::vector<char> input_header_buffer(4096, 0);
+    RawBytes input_header_rb(input_header_buffer.data(), 4096, 4096);
+    Header header(input_header_rb);
+    header.set<long double>("SAMPLE_CLOCK", 856000000.0);
+    header.set<long double>("SYNC_TIME", 0.0);
+    header.set<std::size_t>("SAMPLE_CLOCK_START", 0);
+    std::vector<char> input_data_buffer(block_size, 0);
+    RawBytes input_data_rb(&input_data_buffer[0], block_size, block_size);
+
+    bool start = true;
+
+    std::thread writer_thread( [&] ()
+            {
+                 ostream.init(input_header_rb);
+                 while(start)
+                 {
+                     ostream(input_data_rb);
+                 }
+            });
+    //DadaReadClient reader(buffer.key(), log);
+    BufferDump dumper(buffer.key(), bufferlog, "/tmp/buffer_dump_test.sock",
+                                      max_fill_level, nantennas, nchans,
+                                      total_nchans, cfreq, bw, "./");
+
+    NullSink sink;
+
+    DadaInputStream<decltype(sink)> reader(buffer.key(), inlog, sink);
+
+    std::thread dumper_thread([&](){
+        dumper.start();
+    });
+
+    std::thread sink_thread([&] (){
+           reader.start();
+           });
+
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+
+    dumper.stop();
+    reader.stop();
+
+    start = false;
+    writer_thread.join();
+    dumper_thread.join();
+    sink_thread.join();
+}
 
 TEST_F(BufferDumpTester, read_event)
 {
