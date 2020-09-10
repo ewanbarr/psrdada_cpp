@@ -9,6 +9,7 @@
 #include "psrdada_cpp/dada_null_sink.hpp"
 #include "psrdada_cpp/dada_read_client.hpp"
 #include "psrdada_cpp/dada_input_stream.hpp"
+#include "psrdada_cpp/simple_file_writer.hpp"
 #include "psrdada_cpp/dada_db.hpp"
 #include "psrdada_cpp/common.hpp"
 #include "psrdada_cpp/cuda_utils.hpp"
@@ -330,6 +331,145 @@ TEST_F(PipelineTester, check_stats_test)
     ib_consumer_thread.join();
     CUDA_ERROR_CHECK(cudaFreeHost((void*)input_data_buffer));
 }
+
+
+/*
+TEST_F(PipelineTester, sweep_test)
+{
+
+    DelayEngineSimulator simulator(_config);
+    GainEngineSimulator gsimulator(_config);
+    ChannelScalingTrigger trigger(_config);
+    trigger.request_statistics();
+
+    int const ntimestamps_per_block = 64;
+    int const taftp_block_size = (ntimestamps_per_block * _config.total_nantennas()
+            * _config.nchans() * _config.nsamples_per_heap() * _config.npol());
+    int const taftp_block_bytes = taftp_block_size * sizeof(char2);
+
+    //Create output buffer for coherent beams
+    int const cb_output_nsamps = _config.nsamples_per_heap() * ntimestamps_per_block / _config.cb_tscrunch();
+    int const cb_output_nchans = _config.nchans() / _config.cb_fscrunch();
+    int const cb_block_size = _config.cb_nbeams() * cb_output_nsamps * cb_output_nchans;
+    DadaDB cb_buffer(8, cb_block_size, 4, 4096);
+    cb_buffer.create();
+    _config.cb_dada_key(cb_buffer.key());
+
+    //Create output buffer for incoherent beams
+    int const ib_output_nsamps = _config.nsamples_per_heap() * ntimestamps_per_block / _config.ib_tscrunch();
+    int const ib_output_nchans = _config.nchans() / _config.ib_fscrunch();
+    int const ib_block_size = _config.ib_nbeams() * ib_output_nsamps * ib_output_nchans;
+    DadaDB ib_buffer(8, ib_block_size, 4, 4096);
+    ib_buffer.create();
+    _config.ib_dada_key(ib_buffer.key());
+
+    //Setup write clients
+    MultiLog log("PipelineTester");
+    DadaWriteClient cb_write_client(_config.cb_dada_key(), log);
+    DadaWriteClient ib_write_client(_config.ib_dada_key(), log);
+    Pipeline pipeline(_config, cb_write_client, ib_write_client, taftp_block_bytes);
+
+    //Set up null sinks on all buffers
+    //StatisticsChecker checker(0.0f, 32.0f, 0.05);
+    //BeamBandpassGenerator<decltype(checker)> cb_bpmon(_config.cb_nbeams(), 64, 1, 8192, 1, checker);
+    //BeamBandpassGenerator<decltype(checker)> ib_bpmon(1, 64, 1, 8192, 1, checker);
+
+    //Set up simple file writers on the dada buffers
+    SimpleFileWriter cb_bpmon("coherent_beam.dada");
+    SimpleFileWriter ib_bpmon("incoherent_beam.dada");
+
+    DadaInputStream<decltype(cb_bpmon)> cb_consumer(_config.cb_dada_key(), log, cb_bpmon);
+    DadaInputStream<decltype(ib_bpmon)> ib_consumer(_config.ib_dada_key(), log, ib_bpmon);
+
+    std::thread cb_consumer_thread( [&](){
+        try {
+            cb_consumer.start();
+        } catch (std::exception& e) {
+            BOOST_LOG_TRIVIAL(error) << e.what();
+        }
+    });
+    std::thread ib_consumer_thread( [&](){
+        try {
+            ib_consumer.start();
+        } catch (std::exception& e) {
+            BOOST_LOG_TRIVIAL(error) << e.what();
+        }
+    });
+
+    //Create and input header buffer
+    std::vector<char> input_header_buffer(4096, 0);
+    RawBytes input_header_rb(input_header_buffer.data(), 4096, 4096);
+    Header header(input_header_rb);
+    header.set<long double>("SAMPLE_CLOCK", 856000000.0);
+    header.set<long double>("SYNC_TIME", 0.0);
+    header.set<std::size_t>("SAMPLE_CLOCK_START", 0);
+
+    //Create and input data buffer
+    char* input_data_buffer;
+    CUDA_ERROR_CHECK(cudaMallocHost((void**)&input_data_buffer, taftp_block_bytes));
+    RawBytes input_data_rb(input_data_buffer, taftp_block_bytes, taftp_block_bytes);
+    float input_level = 32.0f;
+    _config.output_level(32.0f);
+    std::default_random_engine generator;
+    std::normal_distribution<float> normal_dist(0.0, input_level);
+
+    //Run the init
+    pipeline.init(input_header_rb);
+    //Loop over N data blocks and push them through the system
+    for (int loop_id = 0; loop_id < 10; ++loop_id)
+    {
+         
+    for (std::size_t ii = 0; ii < taftp_block_bytes; ++ii)
+    {
+        //std::size_t chan_idx = ((ii/1024/_config.nchans()) % _config.nchans());
+        //float factor = chan_idx * (0.8/_config.nchans()) +  0.6;
+        float val = std::lround(normal_dist(generator));
+        input_data_buffer[ii] = static_cast<int8_t>(std::fmaxf(-127.0f,std::fminf(127.0f,val)));
+    }
+
+
+    std::size_t span_width = 16;    
+    for (std::size_t stride = 0; stride < ntimestamps_per_block * _config.nsamples_per_heap() - span_width - _config.nchans()*4; stride+=400)
+    {
+        for (std::size_t span = 0; span < span_width; ++span)
+        {
+            for (std::size_t F_idx = 0; F_idx < _config.nchans(); ++F_idx)
+            {
+                std::size_t T_idx = (stride + span + F_idx*4) / _config.nsamples_per_heap();
+                std::size_t t_idx = (stride + span + F_idx*4) % _config.nsamples_per_heap();                 
+                
+	        for (std::size_t A_idx = 0; A_idx < _config.total_nantennas(); ++A_idx)
+                { 
+
+                for (std::size_t p_idx = 0; p_idx < _config.npol(); ++p_idx)
+                    { 
+                std::size_t idx = T_idx * _config.total_nantennas() * _config.nchans() * _config.nsamples_per_heap() * _config.npol() +
+                                          A_idx * _config.nchans() * _config.nsamples_per_heap() * _config.npol() +
+                                          F_idx * _config.nsamples_per_heap() * _config.npol() +
+                                          t_idx * _config.npol() +
+                                          p_idx;
+                            reinterpret_cast<char2*>(input_data_buffer)[idx].x = 127.0;
+                            reinterpret_cast<char2*>(input_data_buffer)[idx].y = 127.0;
+                    }
+                }
+            }
+        }
+    }
+
+    pipeline(input_data_rb);
+    }
+    cb_consumer.stop();
+    ib_consumer.stop();
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    pipeline(input_data_rb);
+    pipeline(input_data_rb);
+    cb_consumer_thread.join();
+    ib_consumer_thread.join();
+    CUDA_ERROR_CHECK(cudaFreeHost((void*)input_data_buffer));
+}
+*/
+
+
 } //namespace test
 } //namespace fbfuse
 } //namespace meerkat

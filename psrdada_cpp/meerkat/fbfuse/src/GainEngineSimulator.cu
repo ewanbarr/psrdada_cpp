@@ -44,6 +44,12 @@ GainEngineSimulator::GainEngineSimulator(PipelineConfig const& config)
         throw std::runtime_error(msg.str());
     }
     _gain_model = static_cast<GainManager::ComplexGainType*>(_shm_ptr);
+    for (std::size_t ii = 0; ii < config.total_nantennas() * config.nchans() * config.npol(); ++ii)
+    {
+        _gain_model[ii].x = 1.0f;
+        _gain_model[ii].y = 0.0f;
+    }
+
     _sem_id = sem_open(_gain_buffer_sem.c_str(), O_CREAT, 0666, 0);
     if (_sem_id == SEM_FAILED)
     {
