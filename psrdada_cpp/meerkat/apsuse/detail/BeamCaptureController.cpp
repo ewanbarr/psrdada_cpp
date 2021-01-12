@@ -4,7 +4,8 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/foreach.hpp>
 #include <sys/stat.h>
-#include <iostream>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -134,12 +135,19 @@ void BeamCaptureController<FileWritersType>::listen()
                     {
                         std::stringstream outdir;
                         outdir << message.directory << "/" << beam.name;
-                        // Make the output directory
-                        if (mkdir(outdir.str().c_str(), S_IRWXU | S_IRGRP | S_IROTH | S_IXGRP | S_IXOTH) != 0)
-                        {
-                            BOOST_LOG_TRIVIAL(error) << "Critical error, cannot create output directory: "
-                            << outdir.str();
-                            throw std::runtime_error(outdir.str());
+                        // Test if directory already exists
+                        struct stat directory_stats;
+                        stat(outdir.str(), &directory_stats);
+                        bool isdir = S_ISDIR(directory_stats.st_mode);
+                        if (!isdir){
+                            // Make the output directory
+                            BOOST_LOG_TRIVIAL(warning) << "Writing directory does not already exist (no BeeGFS storage targets will be defined)";
+                            if (mkdir(outdir.str().c_str(), S_IRWXU | S_IRGRP | S_IROTH | S_IXGRP | S_IXOTH) != 0)
+                            {
+                                BOOST_LOG_TRIVIAL(error) << "Critical error, cannot create output directory: "
+                                << outdir.str();
+                                throw std::runtime_error(outdir.str());
+                            }
                         }
                         _file_writers[beam.idx]->directory(outdir.str());
                     }
