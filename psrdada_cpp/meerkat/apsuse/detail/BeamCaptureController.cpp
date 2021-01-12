@@ -137,7 +137,7 @@ void BeamCaptureController<FileWritersType>::listen()
                         outdir << message.directory << "/" << beam.name;
                         // Test if directory already exists
                         struct stat directory_stats;
-                        stat(outdir.str(), &directory_stats);
+                        stat(outdir.str().c_str(), &directory_stats);
                         bool isdir = S_ISDIR(directory_stats.st_mode);
                         if (!isdir){
                             // Make the output directory
